@@ -1,0 +1,14 @@
+{
+  "ISIC_5224960": ["ISIC_0014541_downsampled", 1],
+  "ISIC_9207777": ["ISIC_0014518_downsampled", 1],
+  "ISIC_6457527": ["ISIC_0014542_downsampled", 1],
+  "ISIC_8347588": ["ISIC_0014644_downsampled", 0],
+  "ISIC_8372206": ["ISIC_0014525_downsampled", 1],
+  "ISIC_9355360": ["ISIC_0014506_downsampled", 1],
+  "ISIC_6983099": ["ISIC_0028071", 0],
+  "ISIC_5972909": ["ISIC_0029088", 0],
+  "ISIC_0722323": ["ISIC_0013832", 1],
+  "ISIC_6484204": ["ISIC_0027272", 0],
+  "ISIC_7977981": ["ISIC_0013832_downsampled", 0]
+
+}

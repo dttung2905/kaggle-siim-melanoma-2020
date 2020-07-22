@@ -1,0 +1,29 @@
+device: "cuda"
+batch_size: 10  # input batch size for training (default: 64)
+test_batch_size: 16  # input batch size for testing (default: 1000)
+epochs: 2  # number of epochs to train (default: 10)
+lr: 0.0001  # learning rate (default: 0.01)
+momentum: 0.1  # SGD momentum (default: 0.5)
+no_cuda: False  # disables CUDA training
+seed: 42  # random seed (default: 42)
+log_interval: 1  # how many batches to wait before logging training status
+
+model_path: "../output/SEResnext50_32x4d_fold_{}.bin"
+model_name: "imagenet"
+model_backbone: "SEResnext50_32x4d"
+
+training_data_path: "../input/siic-isic-224x224-images/train/"
+train_csv_fold: "../input/small_train_folds.csv"
+#train_csv_fold: "../input/train_folds.csv"
+#test_data_path:  "../input/siic-isic-224x224-images/test/"
+test_data_path:  "../input/siic-isic-224x224-images/test/"
+test_csv: "../input/siim-isic-melanoma-classification/test.csv"
+input_size: 224 
+accumulation_steps: 8
+supplement_data: False
+swa:
+  use_swa: False
+  model_path: "../output/efficientnet-b0-224-224-swa-{}-.bin"
+fp16: False 
+num_classes: 1
+use_metadata: True
