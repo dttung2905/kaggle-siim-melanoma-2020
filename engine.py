@@ -50,7 +50,7 @@ def train(fold):
         project="siim2020",
         entity="siim_melanoma",
         # name=f"20200718-effb0-adamw-consineaneal-{fold}",
-        name="test",
+        name=f"rexnet-test-{fold}",
     )
     config = wandb.config  # Initialize config
     config.update(config_file)
@@ -150,10 +150,10 @@ def train(fold):
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=config.batch_size,
-        # shuffle=True,
         # num_workers=4,
         num_workers=1,
         pin_memory=True,
+        # shuffle=True,
         sampler=BalanceClassSampler(labels=train_targets, mode="upsampling"),
         drop_last=True,
     )
@@ -247,20 +247,33 @@ def train(fold):
         config.device,
         valid_loader,
         config.model_name,
+        valid_targets,
         "final",
         meta_features=meta_features,
     )
     if config.swa["use_swa"]:
         model_path = config.swa["model_path"].format(fold)
         evaluate_for_best_epoch(
-            model_path, config.device, valid_loader, config.model_name, "swa"
+            model_path,
+            config.device,
+            valid_loader,
+            config.model_name,
+            valid_targets,
+            "swa",
+            meta_features=meta_features,
         )
 
     # show_class_activation_map(model, valid_loader, wandb, 10)
 
 
 def evaluate_for_best_epoch(
-    model_path, device, valid_loader, model_name, epoch="final", meta_features=None
+    model_path,
+    device,
+    valid_loader,
+    model_name,
+    valid_targets,
+    epoch="final",
+    meta_features=None,
 ):
     args = get_args()
     with open(args.config) as file:
@@ -288,6 +301,13 @@ def evaluate_for_best_epoch(
         epoch=epoch,
         upload_image=True,
         use_sigmoid=True,
+    )
+    predictions = np.vstack((predictions)).ravel()
+
+    auc = metrics.roc_auc_score(valid_targets, predictions)
+    print(f"Epoch = {epoch}, AUC = {auc}")
+    wandb.log(
+        {"best_valid_auc": auc,}
     )
 
 
@@ -356,7 +376,7 @@ def predict(fold):
     )
 
     test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=16, shuffle=False, num_workers=4,
+        test_dataset, batch_size=config.test_batch_size, shuffle=False, num_workers=4,
     )
 
     model = get_model(

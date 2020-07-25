@@ -6,6 +6,7 @@ import pretrainedmodels
 from torch.nn import functional as F
 from efficientnet_pytorch import EfficientNet
 from torchvision import models
+from .rexnetv1 import ReXNetV1
 
 
 def get_model(
@@ -28,7 +29,7 @@ def get_model(
     Returns:
         model class
     """
-    model_backbone_zoo = ["efficientnet", "SEResnext50_32x4d", "resnet"]
+    model_backbone_zoo = ["efficientnet", "SEResnext50_32x4d", "resnet", "RexNet"]
     assert backbone in model_backbone_zoo
 
     if use_metadata:
@@ -43,6 +44,10 @@ def get_model(
         resnet_zoo = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"]
         assert model_name in resnet_zoo
         model = PretrainedModel(pretrained=model_name, num_classes=num_classes)
+    elif backbone == "RexNet":
+        # resnet_zoo = ["ReXNet_V1-1.0x", "ReXNet_V1-1.3x", "ReXNet_V1-1.5x", "ReXNet_V1-2.0x" ]
+        # assert model_name in resnet_zoo
+        model = RexNet(model_name, num_classes)
 
     if use_metadata:
         model = ModelWithMetaData(arch=model, n_meta_features=len(meta_features))
@@ -61,8 +66,13 @@ class ModelWithMetaData(nn.Module):
         """
         super(ModelWithMetaData, self).__init__()
         self.arch = arch
-        in_features = self.arch._fc.in_features
-        self.arch._fc = nn.Linear(in_features=in_features, out_features=500, bias=True)
+        if isinstance(self.arch, RexNet):
+            self.arch.output = nn.Linear(1000, 500)
+        else:
+            in_features = self.arch._fc.in_features
+            self.arch._fc = nn.Linear(
+                in_features=in_features, out_features=500, bias=True
+            )
         self.meta = nn.Sequential(
             nn.Linear(n_meta_features, 500),
             nn.BatchNorm1d(500),
@@ -155,6 +165,32 @@ class efficientnetBackBone(nn.Module):
         x = F.adaptive_avg_pool2d(x, 1).reshape(batch_size, -1)
         x = self.dropout(x)
         out = self._fc(x)
+        if out.shape[1] == self.num_classes:
+            # if not using metadata we will calculate and return loss here
+            loss = get_loss_value(out, targets)
+            return out, loss
+        return out
+
+
+class RexNet(nn.Module):
+    def __init__(self, model_name, num_classes):
+        """
+        Source : https://github.com/clovaai/rexnet#pretrained
+        """
+        super(RexNet, self).__init__()
+        self.base_model = ReXNetV1(width_mult=2)
+        self.base_model.load_state_dict(torch.load(f"../input/{model_name}.pth"))
+
+        in_features = 1000
+        self.num_classes = num_classes
+        self.dropout = nn.Dropout(0.3)
+        self.output = nn.Linear(in_features, self.num_classes)
+
+    def forward(self, image, targets):
+        batch_size, _, _, _ = image.shape
+        x = self.base_model(image).reshape(batch_size, -1)
+        x = self.dropout(x)
+        out = self.output(x)
         if out.shape[1] == self.num_classes:
             # if not using metadata we will calculate and return loss here
             loss = get_loss_value(out, targets)
