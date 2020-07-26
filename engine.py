@@ -50,7 +50,7 @@ def train(fold):
         project="siim2020",
         entity="siim_melanoma",
         # name=f"20200718-effb0-adamw-consineaneal-{fold}",
-        name=f"rexnet-test-{fold}",
+        name=f"extradata-test-{fold}",
     )
     config = wandb.config  # Initialize config
     config.update(config_file)
@@ -61,19 +61,25 @@ def train(fold):
     seed_everything(config.seed)
     df = pd.read_csv(config.train_csv_fold)
     df_train = df[df.kfold != fold].reset_index(drop=True)
+    df_train["image_name"] = config.training_data_path + df_train["image_name"] + ".jpg"
 
-    if config.supplement_data:
+    if config.supplement_data["use_supplement"]:
         print(f"training shape before merge {df_train.shape}")
-        df_train_2019 = pd.read_csv(config.supplement_data)
-        df_train = pd.concat([df_train, df_train_2019]).reset_index(drop=True)
+        df_supplement = pd.read_csv(config.supplement_data["csv_file"])
+        df_supplement = df_supplement[df_supplement["tfrecord"] % 2 == 0]
+        df_supplement = df_supplement[df_supplement["target"] == 1]
+        df_supplement["image_name"] = (
+            config.supplement_data["file_path"] + df_supplement["image_name"] + ".jpg"
+        )
+        df_train = pd.concat([df_train, df_supplement]).reset_index(drop=True)
         df_train = df_train.sample(frac=1, random_state=config.seed).reset_index(
             drop=True
         )
-
+        del df_supplement
         print(f"training shape after merge {df_train.shape}")
-        del df_train_2019
 
     df_valid = df[df.kfold == fold].reset_index(drop=True)
+    df_valid["image_name"] = config.training_data_path + df_valid["image_name"] + ".jpg"
 
     if config.use_metadata:
         df_train, meta_features = get_meta_feature(df_train)
@@ -127,15 +133,15 @@ def train(fold):
     )
 
     train_images = df_train.image_name.values.tolist()
-    train_images = [
-        os.path.join(config.training_data_path, i + ".jpg") for i in train_images
-    ]
+    # train_images = [
+    #    os.path.join(config.training_data_path, i + ".jpg") for i in train_images
+    # ]
     train_targets = df_train.target.values
 
     valid_images = df_valid.image_name.values.tolist()
-    valid_images = [
-        os.path.join(config.training_data_path, i + ".jpg") for i in valid_images
-    ]
+    # valid_images = [
+    #    os.path.join(config.training_data_path, i + ".jpg") for i in valid_images
+    # ]
     valid_targets = df_valid.target.values
 
     train_dataset = ClassificationDataset(

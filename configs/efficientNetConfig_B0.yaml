@@ -1,34 +1,42 @@
 device: "cuda"
-batch_size: 20
+batch_size: 30 
 #batch_size: 100
 test_batch_size: 40
 epochs: 10
-lr: 0.00004
+lr: 0.00002
 momentum: 0.1
 no_cuda: False
 seed: 42
 log_interval: 1
 
-model_path: "../output/best/rexnetv1_2_{}.bin"
+model_path: "../output/best/rexnetv1_1.0_{}.bin"
 model_backbone: "efficientnet"
-model_name: "efficientnet-b4"
+model_name: "efficientnet-b0"
 #model_backbone: "RexNet"
 #model_name: "rexnetv1_2.0x"
+#model_name: "rexnetv1_1.3x"
+
+#model_name: "imagenet"
+#model_backbone: "SEResnext50_32x4d"
 
 training_data_path: "../input/siic-isic-384x384-images/train/"
 #training_data_path: "../input/siic-isic-768x768-images/train/"
-#train_csv_fold: "../input/small_train_folds.csv"
-train_csv_fold: "../input/train_folds_leak_free.csv"
+train_csv_fold: "../input/small_train_folds.csv"
+#train_csv_fold: "../input/train_folds_leak_free.csv"
 #train_csv_fold: "../input/train_folds.csv"
 test_data_path:  "../input/siic-isic-384x384-images/test/"
 #test_data_path:  "../input/siic-isic-768x768-images/test/"
 test_csv: "../input/siim-isic-melanoma-classification/test.csv"
 #input_size: 768
 input_size: 384
-accumulation_steps: 10 
-supplement_data: False
+accumulation_steps: 10
+supplement_data:
+  use_supplement: True 
+  csv_file: "../input/triple_leak_free_external/2019-384x384-train.csv"
+  file_path: "../input/triple_leak_free_external/siic-isic-2019-384x384-images/"
+
 swa:
-  use_swa: False 
+  use_swa: True 
   model_path: "../output/rexnetv1_2_swa_{}.bin"
 fp16: True
 num_classes: 1
