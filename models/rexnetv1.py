@@ -194,12 +194,7 @@ class ReXNetV1(nn.Module):
             nn.Dropout(dropout_ratio), nn.Conv2d(pen_channels, classes, 1, bias=True)
         )
 
-    # def forward(self, x):
-    #    x = self.features(x)
-    #    x = self.output(x).squeeze()
-    #    return x
-    def forward(self, image, targets):
-        x = self.features(image)
-        out = self.output(x).squeeze()
-        loss = get_loss_value(out, targets)
-        return out, loss
+    def forward(self, x):
+        x = self.features(x)
+        x = self.output(x).squeeze()
+        return x

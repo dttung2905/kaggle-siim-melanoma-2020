@@ -50,7 +50,8 @@ def train(fold):
         project="siim2020",
         entity="siim_melanoma",
         # name=f"20200718-effb0-adamw-consineaneal-{fold}",
-        name=f"extradata-test-{fold}",
+        # name=f"2017-2018-rexnet-test-{fold}",
+        name=f"swav-test-{fold}",
     )
     config = wandb.config  # Initialize config
     config.update(config_file)
@@ -194,12 +195,16 @@ def train(fold):
     #    optimizer, len(train_loader) * config.epochs
     # )
 
-    scheduler = torch.optim.lr_scheduler.CyclicLR(
-        optimizer,
-        base_lr=config.lr / 10,
-        max_lr=config.lr * 100,
-        mode="triangular2",
-        cycle_momentum=False,
+    # scheduler = torch.optim.lr_scheduler.CyclicLR(
+    #    optimizer,
+    #    base_lr=config.lr / 10,
+    #    max_lr=config.lr * 100,
+    #    mode="triangular2",
+    #    cycle_momentum=False,
+    # )
+
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optimizer, max_lr=3e-3, steps_per_epoch=len(train_loader), epochs=config.epochs
     )
 
     es = EarlyStopping(patience=5, mode="max")

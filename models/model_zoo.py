@@ -29,7 +29,13 @@ def get_model(
     Returns:
         model class
     """
-    model_backbone_zoo = ["efficientnet", "SEResnext50_32x4d", "resnet", "RexNet"]
+    model_backbone_zoo = [
+        "efficientnet",
+        "SEResnext50_32x4d",
+        "resnet",
+        "RexNet",
+        "swav",
+    ]
     assert backbone in model_backbone_zoo
 
     if use_metadata:
@@ -45,9 +51,9 @@ def get_model(
         assert model_name in resnet_zoo
         model = PretrainedModel(pretrained=model_name, num_classes=num_classes)
     elif backbone == "RexNet":
-        # resnet_zoo = ["ReXNet_V1-1.0x", "ReXNet_V1-1.3x", "ReXNet_V1-1.5x", "ReXNet_V1-2.0x" ]
-        # assert model_name in resnet_zoo
         model = RexNet(model_name, num_classes)
+    elif backbone == "swav":
+        model = SwAV(pretrained=model_name, num_classes=num_classes)
 
     if use_metadata:
         model = ModelWithMetaData(arch=model, n_meta_features=len(meta_features))
@@ -178,7 +184,7 @@ class RexNet(nn.Module):
         Source : https://github.com/clovaai/rexnet#pretrained
         """
         super(RexNet, self).__init__()
-        self.base_model = ReXNetV1(width_mult=2)
+        self.base_model = ReXNetV1(width_mult=1.3)
         self.base_model.load_state_dict(torch.load(f"../input/{model_name}.pth"))
 
         in_features = 1000
@@ -191,6 +197,35 @@ class RexNet(nn.Module):
         x = self.base_model(image).reshape(batch_size, -1)
         x = self.dropout(x)
         out = self.output(x)
+        if out.shape[1] == self.num_classes:
+            # if not using metadata we will calculate and return loss here
+            loss = get_loss_value(out, targets)
+            return out, loss
+        return out
+
+
+class SwAV(nn.Module):
+    def __init__(self, num_classes: int, pretrained: str):
+        """
+        Unsupervised Learning of Visual Features by Contrasting Cluster Assignments
+        https://github.com/facebookresearch/swav
+        """
+        super(SwAV, self).__init__()
+        self.num_classes = num_classes
+        self.pretrained = pretrained
+        self.base_model = torch.hub.load("facebookresearch/swav", "resnet50")
+        # self.base_model = pretrainedmodels.__dict__[self.pretrained](pretrained=None)
+        # in_features = self.base_model.fc.in_features
+        in_features = 1000
+        self.fc = nn.Linear(in_features, self.num_classes)
+        self.dropout = nn.Dropout(0.3)
+
+    def forward(self, image, targets):
+        batch_size, _, _, _ = image.shape
+
+        x = self.base_model(image)
+        x = self.dropout(x)
+        out = self.fc(x)
         if out.shape[1] == self.num_classes:
             # if not using metadata we will calculate and return loss here
             loss = get_loss_value(out, targets)
