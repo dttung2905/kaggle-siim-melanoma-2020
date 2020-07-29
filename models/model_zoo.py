@@ -7,7 +7,7 @@ from torch.nn import functional as F
 from efficientnet_pytorch import EfficientNet
 from torchvision import models
 from .rexnetv1 import ReXNetV1
-
+import timm
 
 def get_model(
     backbone: str,
@@ -44,8 +44,8 @@ def get_model(
     if backbone == "SEResnext50_32x4d":
         model = SEResnext50_32x4d(pretrained=model_name, num_classes=num_classes)
     elif backbone == "efficientnet":
-        model = EfficientNet.from_pretrained(model_name, num_classes=num_classes)
-        # model = efficientnetBackBone(model_name=model_name, num_classes=num_classes)
+        #model = EfficientNet.from_pretrained(model_name, num_classes=num_classes)
+        model = efficientnetBackBone(model_name=model_name, num_classes=num_classes)
     elif backbone == "resnet":
         resnet_zoo = ["resnet18", "resnet34", "resnet50", "resnet101", "resnet152"]
         assert model_name in resnet_zoo
@@ -133,6 +133,27 @@ class SEResnext50_32x4d(nn.Module):
         return out
 
 
+#class PretrainedModel(nn.Module):
+#    def __init__(self, num_classes: int, pretrained: str):
+#        super(PretrainedModel, self).__init__()
+#        self.num_classes = num_classes
+#        self.pretrained = pretrained
+#        self.base_model = pretrainedmodels.__dict__[self.pretrained](pretrained=None)
+#        in_features = self.base_model.last_linear.in_features
+#        self._fc = nn.Linear(in_features, self.num_classes)
+#
+#    def forward(self, image, targets):
+#        batch_size, _, _, _ = image.shape
+#
+#        x = self.base_model.features(image)
+#        x = F.adaptive_avg_pool2d(x, 1).reshape(batch_size, -1)
+#        out = self._fc(x)
+#        if out.shape[1] == self.num_classes:
+#            # if not using metadata we will calculate and return loss here
+#            loss = get_loss_value(out, targets)
+#            return out, loss
+#        return out
+
 class PretrainedModel(nn.Module):
     def __init__(self, num_classes: int, pretrained: str):
         super(PretrainedModel, self).__init__()
@@ -140,42 +161,76 @@ class PretrainedModel(nn.Module):
         self.pretrained = pretrained
         self.base_model = pretrainedmodels.__dict__[self.pretrained](pretrained=None)
         in_features = self.base_model.last_linear.in_features
-        self._fc = nn.Linear(in_features, self.num_classes)
+        self.base_model.last_linear = nn.Linear(in_features, self.num_classes)
 
     def forward(self, image, targets):
         batch_size, _, _, _ = image.shape
 
-        x = self.base_model.features(image)
-        x = F.adaptive_avg_pool2d(x, 1).reshape(batch_size, -1)
-        out = self._fc(x)
+        out = self.base_model.features(image)
         if out.shape[1] == self.num_classes:
             # if not using metadata we will calculate and return loss here
             loss = get_loss_value(out, targets)
             return out, loss
         return out
-
 
 class efficientnetBackBone(nn.Module):
     def __init__(self, model_name, num_classes):
+        """
+        effcientnet model from timm
+        """
         super().__init__()
-        self.base_model = EfficientNet.from_pretrained(model_name)
-        in_features = self.base_model._fc.in_features
+        self.base_model = timm.create_model("tf_efficientnet_b1_ns", pretrained=True)
+        #print(self.base_model)
+        in_features = self.base_model.classifier.in_features
         self.num_classes = num_classes
-        self.dropout = nn.Dropout(0.3)
-        self._fc = nn.Linear(in_features, self.num_classes)
+        self.base_model.classifier = nn.Linear(in_features, self.num_classes)
 
     def forward(self, image, targets):
-        batch_size, _, _, _ = image.shape
-
-        x = self.base_model.extract_features(image)
-        x = F.adaptive_avg_pool2d(x, 1).reshape(batch_size, -1)
-        x = self.dropout(x)
-        out = self._fc(x)
+        out = self.base_model(image)
         if out.shape[1] == self.num_classes:
-            # if not using metadata we will calculate and return loss here
             loss = get_loss_value(out, targets)
             return out, loss
         return out
+
+#class efficientnetBackBone(nn.Module):
+#    def __init__(self, model_name, num_classes):
+#        super().__init__()
+#        """
+#        different implementation of effnet
+#        """
+#        self.base_model = EfficientNet.from_pretrained(model_name)
+#        in_features = self.base_model._fc.in_features
+#        self.num_classes = num_classes
+#        self.base_model._fc = nn.Linear(in_features, self.num_classes)
+#
+#    def forward(self, image, targets):
+#        out = self.base_model.extract_features(image)
+#        if out.shape[1] == self.num_classes:
+#            loss = get_loss_value(out, targets)
+#            return out, loss
+#        return out
+
+#class efficientnetBackBone(nn.Module):
+#    def __init__(self, model_name, num_classes):
+#        super().__init__()
+#        self.base_model = EfficientNet.from_pretrained(model_name)
+#        in_features = self.base_model._fc.in_features
+#        self.num_classes = num_classes
+#        self.dropout = nn.Dropout(0.3)
+#        self._fc = nn.Linear(in_features, self.num_classes)
+#
+#    def forward(self, image, targets):
+#        batch_size, _, _, _ = image.shape
+#
+#        x = self.base_model.extract_features(image)
+#        x = F.adaptive_avg_pool2d(x, 1).reshape(batch_size, -1)
+#        x = self.dropout(x)
+#        out = self._fc(x)
+#        if out.shape[1] == self.num_classes:
+#            # if not using metadata we will calculate and return loss here
+#            loss = get_loss_value(out, targets)
+#            return out, loss
+#        return out
 
 
 class RexNet(nn.Module):
@@ -214,20 +269,40 @@ class SwAV(nn.Module):
         self.num_classes = num_classes
         self.pretrained = pretrained
         self.base_model = torch.hub.load("facebookresearch/swav", "resnet50")
-        # self.base_model = pretrainedmodels.__dict__[self.pretrained](pretrained=None)
-        # in_features = self.base_model.fc.in_features
-        in_features = 1000
-        self.fc = nn.Linear(in_features, self.num_classes)
-        self.dropout = nn.Dropout(0.3)
+        in_features = self.base_model.fc.in_features
+        self.base_model.fc = nn.Linear(in_features, self.num_classes)
 
     def forward(self, image, targets):
-        batch_size, _, _, _ = image.shape
-
-        x = self.base_model(image)
-        x = self.dropout(x)
-        out = self.fc(x)
+        out = self.base_model(image)
         if out.shape[1] == self.num_classes:
-            # if not using metadata we will calculate and return loss here
             loss = get_loss_value(out, targets)
             return out, loss
         return out
+
+#class SwAV(nn.Module):
+#    def __init__(self, num_classes: int, pretrained: str):
+#        """
+#        Unsupervised Learning of Visual Features by Contrasting Cluster Assignments
+#        https://github.com/facebookresearch/swav
+#        """
+#        super(SwAV, self).__init__()
+#        self.num_classes = num_classes
+#        self.pretrained = pretrained
+#        self.base_model = torch.hub.load("facebookresearch/swav", "resnet50")
+#        # self.base_model = pretrainedmodels.__dict__[self.pretrained](pretrained=None)
+#        # in_features = self.base_model.fc.in_features
+#
+#        in_features = 1000
+#        self.fc = nn.Linear(in_features, self.num_classes)
+#        self.dropout = nn.Dropout(0.3)
+#
+#
+#    def forward(self, image, targets):
+#        out = self.base_model(image)
+#        x = self.dropout(x)
+#        out = self.fc(x)
+#        if out.shape[1] == self.num_classes:
+#            # if not using metadata we will calculate and return loss here
+#            loss = get_loss_value(out, targets)
+#            return out, loss
+#        return out
