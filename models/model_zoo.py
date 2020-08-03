@@ -8,6 +8,7 @@ from efficientnet_pytorch import EfficientNet
 from torchvision import models
 from .rexnetv1 import ReXNetV1
 import timm
+from collections import OrderedDict
 
 def get_model(
     backbone: str,
@@ -173,24 +174,24 @@ class PretrainedModel(nn.Module):
             return out, loss
         return out
 
-class efficientnetBackBone(nn.Module):
-    def __init__(self, model_name, num_classes):
-        """
-        effcientnet model from timm
-        """
-        super().__init__()
-        self.base_model = timm.create_model("tf_efficientnet_b1_ns", pretrained=True)
-        #print(self.base_model)
-        in_features = self.base_model.classifier.in_features
-        self.num_classes = num_classes
-        self.base_model.classifier = nn.Linear(in_features, self.num_classes)
-
-    def forward(self, image, targets):
-        out = self.base_model(image)
-        if out.shape[1] == self.num_classes:
-            loss = get_loss_value(out, targets)
-            return out, loss
-        return out
+#class efficientnetBackBone(nn.Module):
+#    def __init__(self, model_name, num_classes):
+#        """
+#        effcientnet model from timm
+#        """
+#        super().__init__()
+#        self.base_model = timm.create_model("tf_efficientnet_b1_ns", pretrained=True)
+#        #print(self.base_model)
+#        in_features = self.base_model.classifier.in_features
+#        self.num_classes = num_classes
+#        self.base_model.classifier = nn.Linear(in_features, self.num_classes)
+#
+#    def forward(self, image, targets):
+#        out = self.base_model(image)
+#        if out.shape[1] == self.num_classes:
+#            loss = get_loss_value(out, targets)
+#            return out, loss
+#        return out
 
 #class efficientnetBackBone(nn.Module):
 #    def __init__(self, model_name, num_classes):
@@ -199,16 +200,45 @@ class efficientnetBackBone(nn.Module):
 #        different implementation of effnet
 #        """
 #        self.base_model = EfficientNet.from_pretrained(model_name)
-#        in_features = self.base_model._fc.in_features
+#        self.in_features = self.base_model._fc.in_features
 #        self.num_classes = num_classes
-#        self.base_model._fc = nn.Linear(in_features, self.num_classes)
+#        self.relu = nn.ReLU()
+#        self.batch_norm = nn.BatchNorm1d(num_features=self.in_features)
+#        self.fc = nn.Linear(self.in_features, self.num_classes)
 #
 #    def forward(self, image, targets):
-#        out = self.base_model.extract_features(image)
+#        batch_size, _, _, _ = image.shape
+#        x = self.base_model.extract_features(image)
+#        x = F.adaptive_avg_pool2d(x, 1).reshape(batch_size, -1)
+#        x = self.relu(x)
+#        x = self.batch_norm(x)
+#        out = self.fc(x)
+#        
 #        if out.shape[1] == self.num_classes:
 #            loss = get_loss_value(out, targets)
 #            return out, loss
 #        return out
+
+class efficientnetBackBone(nn.Module):
+    def __init__(self, model_name, num_classes):
+        super().__init__()
+        """
+        different implementation of effnet
+        """
+        self.base_model = EfficientNet.from_pretrained(model_name)
+        in_features = self.base_model._fc.in_features
+        self.num_classes = num_classes
+        self.base_model._fc = nn.Linear(in_features, self.num_classes)
+
+    def forward(self, image, targets):
+        out, _ = self.base_model(image, targets)
+        #print(out)
+        #if out.shape[1] == self.num_classes:
+        #    loss = get_loss_value(out, targets)
+        #    return out, loss
+        #return out
+        loss = get_loss_value(out, targets)
+        return out,loss
 
 #class efficientnetBackBone(nn.Module):
 #    def __init__(self, model_name, num_classes):
