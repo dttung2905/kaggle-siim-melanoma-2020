@@ -21,6 +21,7 @@ def get_tta_prediction(
     """
     prediction = np.zeros(prediction_length)
     for tta_id in range(tta):
+        print(f"using tta at tta_id {tta_id}")
         predictions_tta = Engine.predict(
             test_loader, model, device=device, use_sigmoid=True
         )

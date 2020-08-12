@@ -24,7 +24,7 @@ from torchcontrib.optim import SWA
 from torch.cuda.amp import GradScaler
 from models.model_zoo import get_model
 from wtfml.logger import logger
-
+from optimizer.optimizer_zoo import RAdam 
 
 def seed_everything(seed=5000):
     random.seed(seed)
@@ -50,8 +50,9 @@ def train(fold):
         project="siim2020",
         entity="siim_melanoma",
         # name=f"20200718-effb0-adamw-consineaneal-{fold}",
-        # name=f"2017-2018-rexnet-test-{fold}",
-        name=f"swav-test-{fold}",
+        name=f"2017-2018-rexnet-test-{fold}",
+        #name=f"swav-test-{fold}",
+        #name=f"RAdam-b6-384x384-{fold}"
     )
     config = wandb.config  # Initialize config
     config.update(config_file)
@@ -114,12 +115,12 @@ def train(fold):
                 config.input_size, config.input_size, scale=(0.7, 1.0), p=0.4
             ),
             albumentations.augmentations.transforms.VerticalFlip(p=0.4),
-            # albumentations.augmentations.transforms.Cutout(p=0.8), # doesnt work
+            albumentations.augmentations.transforms.Cutout(p=0.3), # doesnt work
             albumentations.ShiftScaleRotate(
                 shift_limit=0.0625, scale_limit=0.1, rotate_limit=15
             ),
             albumentations.Flip(p=0.5),
-            # RandomAugMix(severity=7, width=7, alpha=5, p=1),
+            RandomAugMix(severity=7, width=7, alpha=5, p=0.3),
             # albumentations.augmentations.transforms.Resize(
             #    config.input_size, config.input_size, p=1
             # ),
@@ -160,8 +161,8 @@ def train(fold):
         # num_workers=4,
         num_workers=1,
         pin_memory=True,
-        # shuffle=True,
-        sampler=BalanceClassSampler(labels=train_targets, mode="upsampling"),
+        shuffle=True,
+        #sampler=BalanceClassSampler(labels=train_targets, mode="upsampling"),
         drop_last=True,
     )
 
@@ -184,30 +185,31 @@ def train(fold):
         # drop_last=True
     )
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr)
+    #optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr)
+    optimizer = RAdam(model.parameters(), lr=config.lr)
     if config.swa["use_swa"]:
-        optimizer = SWA(optimizer, swa_start=1, swa_freq=1)
+        optimizer = SWA(optimizer, swa_start=12, swa_freq=1)
 
-    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    #    optimizer, patience=3, threshold=0.001, mode="max"
-    # )
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+       optimizer, patience=2, threshold=0.0001, mode="max"
+    )
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
     #    optimizer, len(train_loader) * config.epochs
     # )
 
-    # scheduler = torch.optim.lr_scheduler.CyclicLR(
-    #    optimizer,
-    #    base_lr=config.lr / 10,
-    #    max_lr=config.lr * 100,
-    #    mode="triangular2",
-    #    cycle_momentum=False,
-    # )
+    #scheduler = torch.optim.lr_scheduler.CyclicLR(
+    #   optimizer,
+    #   base_lr=config.lr / 10,
+    #   max_lr=config.lr * 100,
+    #   mode="triangular2",
+    #   cycle_momentum=False,
+    #)
 
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer, max_lr=3e-3, steps_per_epoch=len(train_loader), epochs=config.epochs
-    )
+    #scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    #    optimizer, max_lr=3e-3, steps_per_epoch=len(train_loader), epochs=config.epochs
+    #)
 
-    es = EarlyStopping(patience=5, mode="max")
+    es = EarlyStopping(patience=6, mode="max")
     if config.fp16:
         print("************* using fp16 *************")
         scaler = GradScaler()
@@ -242,7 +244,7 @@ def train(fold):
             {"valid_auc": auc,}
         )
 
-        scheduler.step()
+        scheduler.step(auc)
 
         es(auc, model, model_path=model_path)
         if es.early_stop:
@@ -254,6 +256,7 @@ def train(fold):
         torch.save(model.state_dict(), config.swa["model_path"].format(fold))
 
     evaluate_for_best_epoch(
+        fold,
         model_path,
         config.device,
         valid_loader,
@@ -265,6 +268,7 @@ def train(fold):
     if config.swa["use_swa"]:
         model_path = config.swa["model_path"].format(fold)
         evaluate_for_best_epoch(
+            fold,
             model_path,
             config.device,
             valid_loader,
@@ -278,6 +282,7 @@ def train(fold):
 
 
 def evaluate_for_best_epoch(
+    fold,
     model_path,
     device,
     valid_loader,
@@ -316,6 +321,8 @@ def evaluate_for_best_epoch(
     predictions = np.vstack((predictions)).ravel()
 
     auc = metrics.roc_auc_score(valid_targets, predictions)
+    oof_file = config.oof_file.replace(".npy", "_" + str(fold) + ".npy")
+    np.save(oof_file, valid_targets)
     print(f"Epoch = {epoch}, AUC = {auc}")
     wandb.log(
         {"best_valid_auc": auc,}
@@ -323,7 +330,7 @@ def evaluate_for_best_epoch(
 
 
 def predict(fold):
-    print("Prediction on test set")
+    print(f"Prediction on test set fold {fold}")
     args = get_args()
     with open(args.config) as file:
         config_file = yaml.load(file, Loader=yaml.FullLoader)
