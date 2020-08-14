@@ -269,7 +269,7 @@ class RexNet(nn.Module):
         Source : https://github.com/clovaai/rexnet#pretrained
         """
         super(RexNet, self).__init__()
-        self.base_model = ReXNetV1(width_mult=1.3)
+        self.base_model = ReXNetV1(width_mult=1.5)
         self.base_model.load_state_dict(torch.load(f"../input/{model_name}.pth"))
 
         in_features = 1000

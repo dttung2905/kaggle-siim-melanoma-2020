@@ -24,4 +24,4 @@ if __name__ == "__main__":
     # sample.to_csv("../output/best/submission_0.csv", index=False)
 
     sample.loc[:, "target"] = (p1 + p2 + p3 + p4 + p0) / 5
-    sample.to_csv("../output/submission_20200808.csv", index=False)
+    sample.to_csv("../output/submission_20200814.csv", index=False)

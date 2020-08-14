@@ -17,7 +17,7 @@ model_path: "../output/best/rexnetv1_1.0_{}.bin"
 #model_name: "efficientnet-b1"
 model_backbone: "RexNet"
 #model_name: "rexnetv1_2.0x"
-model_name: "rexnetv1_1.3x"
+model_name: "rexnetv1_1.5x"
 
 #model_name: "imagenet"
 #model_backbone: "SEResnext50_32x4d"
