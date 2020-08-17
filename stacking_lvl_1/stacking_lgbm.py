@@ -20,10 +20,11 @@ if __name__ == "__main__":
         "objective": "binary",
         #'metric': 'auc',
         "metric": "binary_logloss",
+        # "metric": "auc_mu",
         #'max_depth': 13,
         #'num_leaves': 26,
-        "max_depth": 15,
-        "num_leaves": 30,
+        "max_depth": 10,
+        "num_leaves": 20,
         "learning_rate": 0.0002,
         "feature_fraction": 0.8,
         "bagging_fraction": 0.8,
@@ -41,15 +42,18 @@ if __name__ == "__main__":
         "predictions_6": ["min", "max", "std", "mean",],
         "predictions_7": ["min", "max", "std", "mean",],
         "predictions_8": ["min", "max", "std", "mean",],
+        "predictions_9": ["min", "max", "std", "mean",],
+        "predictions_10": ["min", "max", "std", "mean",],
+        "predictions_11": ["min", "max", "std", "mean",],
     }
     original_train_df = pd.read_csv("../input/train_folds_leak_free.csv")
 
     # oof file tung
-    khanh_1 = pd.read_csv("../input/stacking/best/khanh/oof_B5_384_929.csv")
+    khanh_1 = pd.read_csv("../input/stacking/best/khanh/v2/oof_B5_384_929.csv")
     khanh_1 = khanh_1[["image_name", "predictions"]]
     khanh_1.columns = ["image_name", "predictions_1"]
 
-    khanh_2 = pd.read_csv("../input/stacking/best/khanh/oof_B6_384_928.csv")
+    khanh_2 = pd.read_csv("../input/stacking/best/khanh/v2/oof_B6_384_928.csv")
     khanh_2 = khanh_2[["image_name", "predictions"]]
     khanh_2.columns = ["image_name", "predictions_2"]
 
@@ -76,6 +80,18 @@ if __name__ == "__main__":
     nvnn_8 = pd.read_csv("../input/stacking/best/nvnn/oof_b3_930.csv")
     nvnn_8 = nvnn_8[["image_name", "predictions"]]
     nvnn_8.columns = ["image_name", "predictions_8"]
+
+    khanh_9 = pd.read_csv("../input/stacking/best/khanh/v2/oof_B3_512_927.csv")
+    khanh_9 = khanh_9[["image_name", "predictions"]]
+    khanh_9.columns = ["image_name", "predictions_9"]
+
+    khanh_10 = pd.read_csv("../input/stacking/best/khanh/v2/oof_B5_384_927.csv")
+    khanh_10 = khanh_10[["image_name", "predictions"]]
+    khanh_10.columns = ["image_name", "predictions_10"]
+
+    khanh_11 = pd.read_csv("../input/stacking/best/khanh/v2/oof_B5_384_928.csv")
+    khanh_11 = khanh_11[["image_name", "predictions"]]
+    khanh_11.columns = ["image_name", "predictions_11"]
 
     # test file
     original_test_df = pd.read_csv(
@@ -115,6 +131,18 @@ if __name__ == "__main__":
     test_nvnn_8 = test_nvnn_8[["image_name", "target"]]
     test_nvnn_8.columns = ["image_name", "predictions_8"]
 
+    test_khanh_9 = pd.read_csv("../input/stacking/best/khanh/v2/B3_512_927.csv")
+    test_khanh_9 = test_khanh_9[["image_name", "target"]]
+    test_khanh_9.columns = ["image_name", "predictions_9"]
+
+    test_khanh_10 = pd.read_csv("../input/stacking/best/khanh/v2/B5_384_927.csv")
+    test_khanh_10 = test_khanh_10[["image_name", "target"]]
+    test_khanh_10.columns = ["image_name", "predictions_10"]
+
+    test_khanh_11 = pd.read_csv("../input/stacking/best/khanh/v2/B5_384_928.csv")
+    test_khanh_11 = test_khanh_11[["image_name", "target"]]
+    test_khanh_11.columns = ["image_name", "predictions_11"]
+
     # train_b6_384 = pd.read_csv("../input/stacking/train_EfficientNet_B6_384.csv")
     # train_b6_384 = train_b6_384[["image_name", "predictions"]]
     # train_b6_384.columns = ["image_name", "predictions_2"]
@@ -149,7 +177,17 @@ if __name__ == "__main__":
     original_train_df = original_train_df.merge(
         nvnn_8, left_on="image_name", right_on="image_name", how="left"
     )
+    original_train_df = original_train_df.merge(
+        khanh_9, left_on="image_name", right_on="image_name", how="left"
+    )
+    original_train_df = original_train_df.merge(
+        khanh_10, left_on="image_name", right_on="image_name", how="left"
+    )
+    original_train_df = original_train_df.merge(
+        khanh_11, left_on="image_name", right_on="image_name", how="left"
+    )
 
+    # test df
     original_test_df = original_test_df.merge(
         test_khanh_1, left_on="image_name", right_on="image_name", how="left"
     )
@@ -173,6 +211,15 @@ if __name__ == "__main__":
     )
     original_test_df = original_test_df.merge(
         test_nvnn_8, left_on="image_name", right_on="image_name", how="left"
+    )
+    original_test_df = original_test_df.merge(
+        test_khanh_9, left_on="image_name", right_on="image_name", how="left"
+    )
+    original_test_df = original_test_df.merge(
+        test_khanh_10, left_on="image_name", right_on="image_name", how="left"
+    )
+    original_test_df = original_test_df.merge(
+        test_khanh_11, left_on="image_name", right_on="image_name", how="left"
     )
 
     original_train_df["oof_preds"] = 0
