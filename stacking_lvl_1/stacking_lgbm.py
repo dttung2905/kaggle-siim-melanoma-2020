@@ -45,6 +45,7 @@ if __name__ == "__main__":
         "predictions_9": ["min", "max", "std", "mean",],
         "predictions_10": ["min", "max", "std", "mean",],
         "predictions_11": ["min", "max", "std", "mean",],
+        "predictions_12": ["min", "max", "std", "mean",],
     }
     original_train_df = pd.read_csv("../input/train_folds_leak_free.csv")
 
@@ -93,6 +94,9 @@ if __name__ == "__main__":
     khanh_11 = khanh_11[["image_name", "predictions"]]
     khanh_11.columns = ["image_name", "predictions_11"]
 
+    khanh_12 = pd.read_csv("../input/stacking/best/khanh/v2/oof_B5_384_930.csv")
+    khanh_12 = khanh_12[["image_name", "predictions"]]
+    khanh_12.columns = ["image_name", "predictions_12"]
     # test file
     original_test_df = pd.read_csv(
         "../input/siim-isic-melanoma-classification/test.csv"
@@ -143,6 +147,9 @@ if __name__ == "__main__":
     test_khanh_11 = test_khanh_11[["image_name", "target"]]
     test_khanh_11.columns = ["image_name", "predictions_11"]
 
+    test_khanh_12 = pd.read_csv("../input/stacking/best/khanh/v2/B5_384_930.csv")
+    test_khanh_12 = test_khanh_12[["image_name", "target"]]
+    test_khanh_12.columns = ["image_name", "predictions_12"]
     # train_b6_384 = pd.read_csv("../input/stacking/train_EfficientNet_B6_384.csv")
     # train_b6_384 = train_b6_384[["image_name", "predictions"]]
     # train_b6_384.columns = ["image_name", "predictions_2"]
@@ -186,6 +193,9 @@ if __name__ == "__main__":
     original_train_df = original_train_df.merge(
         khanh_11, left_on="image_name", right_on="image_name", how="left"
     )
+    original_train_df = original_train_df.merge(
+        khanh_12, left_on="image_name", right_on="image_name", how="left"
+    )
 
     # test df
     original_test_df = original_test_df.merge(
@@ -220,6 +230,9 @@ if __name__ == "__main__":
     )
     original_test_df = original_test_df.merge(
         test_khanh_11, left_on="image_name", right_on="image_name", how="left"
+    )
+    original_test_df = original_test_df.merge(
+        test_khanh_12, left_on="image_name", right_on="image_name", how="left"
     )
 
     original_train_df["oof_preds"] = 0
